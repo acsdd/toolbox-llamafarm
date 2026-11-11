@@ -8,5 +8,5 @@ dist/
 *.cer
 *.pem
 
-# The Figma export is a design reference for the ops panel, not part of the CLI.
-Export to HTML file/
+# Superseded design reference (Figma export) moved to .archive; never committed.
+.archive/
