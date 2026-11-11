@@ -9,7 +9,7 @@ import {
   type CatalogModel
 } from '@toolbox/widgets'
 import { flagString } from '../args.js'
-import { formatBytes, label, sectionTitle, verdictMark } from '../render.js'
+import { formatBytes, label, renderTable, sectionTitle, verdictMark } from '../render.js'
 import { detect, type CommandContext } from '../context.js'
 
 export async function resolveModel(ctx: CommandContext, repoId: string): Promise<CatalogModel | null> {
@@ -56,6 +56,7 @@ export async function explainCommand(ctx: CommandContext): Promise<number> {
           model,
           now: { verdict: now?.verdict, reason: now?.reason, hints: now?.hints },
           total: { verdict: total?.verdict, reason: total?.reason },
+          grade: now?.grade ?? null,
           plan
         },
         null,
@@ -86,6 +87,28 @@ export async function explainCommand(ctx: CommandContext): Promise<number> {
     lines.push(`    ${palette.dim}→${palette.reset} ${hint}`)
   }
   lines.push('')
+
+  const grade = now?.grade
+  if (grade) {
+    lines.push(sectionTitle('SCORECARD', palette))
+    lines.push('')
+    lines.push(
+      `  ${label('Setup', palette)}          ${grade.score}/100 · ${grade.letter} · ${grade.label} ${palette.dim}(now)${palette.reset}`
+    )
+    const rows = grade.axes.map((axis) => [
+      axis.label,
+      axis.score === null ? '—' : String(axis.score),
+      String(axis.model),
+      axis.headroom === null ? '—' : `${axis.headroom > 0 ? '+' : ''}${axis.headroom}`,
+      axis.fit === null ? '—' : String(axis.fit)
+    ])
+    const table = renderTable(['AXIS', 'PC', 'MODEL', 'HEADROOM', 'FIT'], rows, palette)
+    lines.push(table.split('\n').map((line) => `  ${line}`).join('\n'))
+    lines.push('')
+    lines.push(`  ${grade.bottleneck.message}`)
+    lines.push(`  ${palette.dim}${grade.bottleneck.advice}${palette.reset}`)
+    lines.push('')
+  }
 
   lines.push(sectionTitle('RUN', palette))
   lines.push('')

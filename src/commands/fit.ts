@@ -73,7 +73,8 @@ export async function fitCommand(ctx: CommandContext): Promise<number> {
               runtimeRamBytes: model.runtimeRamBytes,
               quantLabel: model.quantLabel,
               license: model.license,
-              hints: model.hints
+              hints: model.hints,
+              grade: { score: model.grade.score, letter: model.grade.letter }
             }))
           }))
         },
@@ -115,8 +116,10 @@ export async function fitCommand(ctx: CommandContext): Promise<number> {
     )
     for (const model of shown) {
       const params = model.paramsBillions ? `${model.paramsBillions}B` : '-'
+      const grade = model.grade
+      const gradeColor = grade.score >= 85 ? palette.green : grade.score >= 55 ? palette.yellow : palette.red
       lines.push(
-        `  ${verdictMark(model.verdict, palette)} ${truncate(model.label, 38).padEnd(38)} ${formatBytes(model.runtimeRamBytes).padStart(10)}  ${palette.dim}${params.padStart(6)}  ${model.license ?? '-'}${palette.reset}`
+        `  ${verdictMark(model.verdict, palette)} ${truncate(model.label, 38).padEnd(38)} ${formatBytes(model.runtimeRamBytes).padStart(10)}  ${palette.dim}${params.padStart(6)}  ${model.license ?? '-'}${palette.reset}  ${gradeColor}${grade.letter} ${grade.score}${palette.reset}`
       )
     }
     lines.push('')
@@ -124,6 +127,9 @@ export async function fitCommand(ctx: CommandContext): Promise<number> {
 
   lines.push(
     `${palette.dim}● runs now   ◐ free memory to run   ○ exceeds this machine   (${fromCache ? 'cached' : 'live'} catalog)${palette.reset}`
+  )
+  lines.push(
+    `${palette.dim}right column: setup grade A+…F (0–100), weakest-link weighted${palette.reset}`
   )
   ctx.write(`${lines.join('\n')}\n`)
   return 0

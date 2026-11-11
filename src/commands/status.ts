@@ -2,9 +2,9 @@
  * `llamafarm status` — what this machine can run: CPU, RAM, GPU and the
  * local model runtimes.
  */
-import { formatBytes, label, sectionTitle } from '../render.js'
+import { formatBytes, label, renderTable, sectionTitle } from '../render.js'
 import { detect, type CommandContext } from '../context.js'
-import type { MachineProfile } from '@toolbox/widgets'
+import { gradeMachine, type MachineGrade, type MachineProfile } from '@toolbox/widgets'
 
 const NOW_THRESHOLD = 0.93
 
@@ -22,6 +22,8 @@ export interface StatusReport {
     error: string | null
     models: Array<{ name: string; sizeBytes: number }>
   }
+  /** The PC rated 0-100 on the same axes the models are graded against. */
+  grade: MachineGrade
 }
 
 export function buildReport(machine: MachineProfile, platform: string, node: string): StatusReport {
@@ -38,7 +40,8 @@ export function buildReport(machine: MachineProfile, platform: string, node: str
       url: machine.ollama.url,
       error: machine.ollama.error,
       models: machine.ollama.models.map((model) => ({ name: model.name, sizeBytes: model.sizeBytes }))
-    }
+    },
+    grade: gradeMachine(machine, 'now')
   }
 }
 
@@ -78,6 +81,19 @@ export async function statusCommand(ctx: CommandContext): Promise<number> {
       `  ${label('Ollama', palette)}           ${palette.yellow}not running${palette.reset} ${palette.dim}${report.ollama.url}${palette.reset}`
     )
   }
+
+  const grade = report.grade
+  lines.push('', sectionTitle('PC SCORECARD', palette), '')
+  lines.push(
+    `  ${label('Overall', palette)}        ${grade.score}/100 · ${grade.label} ${palette.dim}(right now)${palette.reset}`
+  )
+  const rows = grade.axes.map((axis) => [
+    axis.label,
+    axis.score === null ? '—' : String(axis.score),
+    axis.detail
+  ])
+  const table = renderTable(['AXIS', 'SCORE', 'DETAIL'], rows, palette)
+  lines.push(table.split('\n').map((line) => `  ${line}`).join('\n'))
 
   ctx.write(`${lines.join('\n')}\n`)
   return 0

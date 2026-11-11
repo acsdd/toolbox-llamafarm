@@ -161,6 +161,25 @@ describe('status command', () => {
     assert.equal(payload.totalRamBytes, 32 * GiB)
     assert.equal(payload.nowBudgetBytes, Math.round(16 * GiB * 0.93))
   })
+
+  it('shows the PC scorecard with per-axis digits', async () => {
+    const result = await run(['status'], { detect: async () => machine() })
+    assert.equal(result.code, 0)
+    assert.match(result.output, /PC SCORECARD/)
+    assert.match(result.output, /\/100/)
+    // 16 cores against the 16-core reference ceiling saturates the compute axis.
+    assert.match(result.output, /Compute\s+100/)
+  })
+
+  it('includes the machine grade in status json', async () => {
+    const result = await run(['status', '--json'], { detect: async () => machine() })
+    const payload = JSON.parse(result.output)
+    assert.equal(payload.grade.axes.length, 4)
+    const compute = payload.grade.axes.find((axis: { axis: string }) => axis.axis === 'compute')
+    assert.equal(compute.score, 100)
+    assert.ok(payload.grade.score >= 0 && payload.grade.score <= 100)
+    assert.equal(typeof payload.grade.label, 'string')
+  })
 })
 
 describe('fit command', () => {
@@ -198,6 +217,33 @@ describe('fit command', () => {
     assert.equal(payload.groups[0].models[0].verdict, 'yellow')
     assert.equal(payload.groups[0].models[0].fitsNow, false)
     assert.equal(payload.groups[0].models[0].fitsTotal, true)
+  })
+
+  it('shows a grade column for each model', async () => {
+    const result = await run(['fit'], {
+      detect: async () => machine(),
+      fetchCatalog: async () => [model({ id: 'small', label: 'Small', runtimeRamBytes: 2 * GiB, fileBytes: 1.6 * GiB })]
+    })
+    assert.equal(result.code, 0)
+    // The grade column is appended after the license: a letter grade + 0-100 score.
+    assert.match(result.output, /apache-2\.0\s+[A-F]\+?\s+\d{1,3}/)
+  })
+
+  it('grades a lighter model higher than a heavy one', async () => {
+    const result = await run(['fit', '--json'], {
+      detect: async () => machine(),
+      fetchCatalog: async () => [
+        model({ id: 'heavy', label: 'Heavy', runtimeRamBytes: 40 * GiB, fileBytes: 32 * GiB }),
+        model({ id: 'light', label: 'Light', runtimeRamBytes: 2 * GiB, fileBytes: 1.6 * GiB })
+      ]
+    })
+    const payload = JSON.parse(result.output)
+    const models = payload.groups[0].models as Array<{ id: string; grade: { score: number; letter: string } }>
+    const light = models.find((entry) => entry.id === 'light')
+    const heavy = models.find((entry) => entry.id === 'heavy')
+    assert.ok(light?.grade && heavy?.grade, 'each model carries a grade')
+    assert.ok(light.grade.score > heavy.grade.score, 'the lighter model grades higher')
+    assert.match(light.grade.letter, /^[A-F]\+?$/)
   })
 })
 
@@ -292,6 +338,39 @@ describe('explain command', () => {
     })
     assert.equal(result.code, 1)
     assert.match(result.output, /No GGUF or safetensors weights/)
+  })
+
+  it('shows the digits comparison and the coverage sentence', async () => {
+    const result = await run(['explain', 'owner/model'], {
+      fetchModel: async () => model(),
+      detect: async () => machine({ freeDiskBytes: 200 * GiB })
+    })
+    assert.equal(result.code, 0)
+    assert.match(result.output, /SCORECARD/)
+    assert.match(result.output, /AXIS/)
+    assert.match(result.output, /HEADROOM/)
+    // Every axis is measurable and covered, so the PC is not the weak link.
+    assert.match(result.output, /This PC covers the model\./)
+  })
+
+  it('names the weak link for a model that exceeds the machine', async () => {
+    const result = await run(['explain', 'owner/model'], {
+      fetchModel: async () => model({ runtimeRamBytes: 40 * GiB, fileBytes: 32 * GiB }),
+      detect: async () => machine()
+    })
+    assert.equal(result.code, 0)
+    assert.match(result.output, /Weak link:/)
+  })
+
+  it('includes the setup grade in explain json', async () => {
+    const result = await run(['explain', 'owner/model', '--json'], {
+      fetchModel: async () => model(),
+      detect: async () => machine()
+    })
+    const payload = JSON.parse(result.output)
+    assert.equal(payload.grade.axes.length, 4)
+    assert.ok(payload.grade.bottleneck && typeof payload.grade.bottleneck.message === 'string')
+    assert.ok(payload.grade.score >= 0 && payload.grade.score <= 100)
   })
 })
 
