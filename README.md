@@ -2,6 +2,8 @@
 
 **Status:** `internal_UAT` — under acceptance testing inside the team. ![status](https://img.shields.io/badge/status-internal_UAT-e8c35c?style=flat-square)
 
+**Site:** <https://acsdd.github.io/toolbox-llamafarm/> — The project landing page.
+
 **What local models fit this machine — and how to run them.**
 
 LlamaFarm reads the live [HuggingFace](https://huggingface.co) catalog, measures every
