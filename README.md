@@ -18,10 +18,10 @@ Part of the Toolbox family:
 
 | App | Repo |
 | --- | --- |
-| Toolbox (desktop) | [`toolbox-desktop`](https://github.com/28121978444/toolbox-desktop) |
-| NAS companion | [`toolbox-nas`](https://github.com/28121978444/toolbox-nas) |
-| MCP server + panel | [`toolbox-mcp`](https://github.com/28121978444/toolbox-mcp) |
-| Shared widget core | [`toolbox-widgets`](https://github.com/28121978444/toolbox-widgets) |
+| Toolbox (desktop) | [`toolbox-desktop`](https://github.com/acsdd/toolbox-desktop) |
+| NAS companion | [`toolbox-nas`](https://github.com/acsdd/toolbox-nas) |
+| MCP server + panel | [`toolbox-mcp`](https://github.com/acsdd/toolbox-mcp) |
+| Shared widget core | [`toolbox-widgets`](https://github.com/acsdd/toolbox-widgets) |
 
 ## Commands
 
